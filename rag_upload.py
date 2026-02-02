@@ -1,4 +1,7 @@
-from langchain_qdrant import FastEmbedEmbeddings
+try:
+    from langchain_qdrant import FastEmbedEmbeddings
+except ImportError:
+    from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, VectorParams
