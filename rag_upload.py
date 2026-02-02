@@ -1,9 +1,4 @@
-try:
-    from langchain_qdrant import FastEmbedEmbeddings
-except ImportError:
-    # Just a placeholder for local machines that can't install it
-    # Koyeb will have it installed
-    FastEmbedEmbeddings = None
+from langchain_huggingface import HuggingFaceInferenceAPIEmbeddings
 
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
@@ -18,10 +13,10 @@ load_dotenv()
 
 #----------------------------IMPORTING LIBRARIES----------------------------
 
-if FastEmbedEmbeddings:
-    embeddings = FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5")
-else:
-    embeddings = None
+embeddings = HuggingFaceInferenceAPIEmbeddings(
+    api_key=os.getenv("HF_TOKEN"),
+    model_name="sentence-transformers/all-mpnet-base-v2"
+)
 
 # Hybrid Qdrant Initialization: Use cloud if URL/API KEY exists, otherwise local
 QDRANT_URL = os.getenv("QDRANT_URL")
@@ -45,8 +40,6 @@ else:
         client = QdrantClient(path="trip_rag_name")
 
 def upload_memory_rag(text: str):
-    if not embeddings:
-        return "Error: Embeddings not available on this machine."
     vector_store = QdrantVectorStore(
         client=client,
         collection_name="trip_rag_name",
@@ -57,8 +50,6 @@ def upload_memory_rag(text: str):
 
 def upload_rag_from_data(json_data, filename="api_upload"):
     """Processed a single JSON object and uploads it."""
-    if not embeddings:
-        return "Error: Embeddings not available on this machine."
         
     doc = process_json_item(json_data, filename)
     
@@ -239,7 +230,7 @@ def upload_rag():
     try:
         client.create_collection(
             collection_name="trip_rag_name",
-            vectors_config=VectorParams(size=384, distance=Distance.COSINE), # BGE-small is 384 dimensions
+            vectors_config=VectorParams(size=768, distance=Distance.COSINE), # all-mpnet-base-v2 is 768 dimensions
         )
     except Exception as e:
         # If collection already exists, that's okay
