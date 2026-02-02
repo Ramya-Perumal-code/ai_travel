@@ -1,4 +1,4 @@
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_qdrant import FastEmbedEmbeddings
 
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
@@ -47,7 +47,7 @@ except ImportError:
 
 #----------------------------IMPORTING LIBRARIES----------------------------
 
-embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
+embeddings = FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5")
 
 # Hybrid Qdrant Initialization: Use cloud if URL/API KEY exists, otherwise local
 QDRANT_URL = os.getenv("QDRANT_URL")

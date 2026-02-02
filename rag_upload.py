@@ -1,4 +1,4 @@
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_qdrant import FastEmbedEmbeddings
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, VectorParams
@@ -12,7 +12,7 @@ load_dotenv()
 
 #----------------------------IMPORTING LIBRARIES----------------------------
 
-embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
+embeddings = FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5")
 
 # Hybrid Qdrant Initialization: Use cloud if URL/API KEY exists, otherwise local
 QDRANT_URL = os.getenv("QDRANT_URL")
@@ -174,7 +174,7 @@ def upload_rag():
     try:
         client.create_collection(
             collection_name="trip_rag_name",
-            vectors_config=VectorParams(size=768, distance=Distance.COSINE),
+            vectors_config=VectorParams(size=384, distance=Distance.COSINE), # BGE-small is 384 dimensions
         )
     except Exception as e:
         # If collection already exists, that's okay
