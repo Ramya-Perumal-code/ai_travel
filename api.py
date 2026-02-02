@@ -504,10 +504,13 @@ if __name__ == "__main__":
     # Note: Using workers=1 to avoid Qdrant file lock conflicts
     # For production with multiple workers, use Qdrant server instead of local file
     # If you encounter file lock errors, try setting reload=False
+    
+    port = int(os.getenv("PORT", 8000))
+    
     uvicorn.run(
         "api:app",
         host="0.0.0.0",
-        port=8000,
+        port=port,
         reload=False,  # Set to False if you encounter Qdrant file lock issues
         workers=1,  # Single worker to avoid Qdrant file lock conflicts
         log_level="info"
