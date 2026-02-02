@@ -124,6 +124,9 @@ import logging
 # Import agents from llm_agent
 # Import agents from llm_agent
 from llm_agent import TravelResearchAgent, AdditionalInfoAgent, OrchestrateAgent
+from rag_upload import upload_memory_rag # Import for the upload endpoint
+import os
+import json
 
 # Configure logging
 logging.basicConfig(
@@ -463,17 +466,44 @@ async def test_browser_search(query: str):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-@app.exception_handler(Exception)
-async def global_exception_handler(request, exc):
+@app.post(
+    "/api/v1/upload-text",
+    tags=["Management"],
+    summary="Upload raw text to RAG",
+)
+async def upload_text(text: str, api_key: str):
     """
-    Global exception handler for unhandled errors
+    Securely upload raw text to the cloud RAG database.
+    (Requires matching GROQ_API_KEY as a simple password)
     """
-    logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
-    return {
-        "success": False,
-        "error": "Internal server error",
-        "detail": str(exc)
-    }
+    if api_key != os.getenv("GROQ_API_KEY"):
+        raise HTTPException(status_code=403, detail="Invalid API Key")
+    
+    try:
+        msg = upload_memory_rag(text)
+        return {"success": True, "message": msg}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@app.post(
+    "/api/v1/upload-json",
+    tags=["Management"],
+    summary="Upload a single JSON record to RAG",
+)
+async def upload_json(data: dict, api_key: str):
+    """
+    Uploads a JSON object to the RAG. 
+    (Requires matching GROQ_API_KEY as a simple password)
+    """
+    if api_key != os.getenv("GROQ_API_KEY"):
+        raise HTTPException(status_code=403, detail="Invalid API Key")
+    
+    try:
+        from rag_upload import upload_rag_from_data
+        msg = upload_rag_from_data(data)
+        return {"success": True, "message": msg}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 
 # --- Application Startup/Shutdown ---

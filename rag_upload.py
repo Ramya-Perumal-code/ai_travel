@@ -1,7 +1,10 @@
 try:
     from langchain_qdrant import FastEmbedEmbeddings
 except ImportError:
-    from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
+    # Just a placeholder for local machines that can't install it
+    # Koyeb will have it installed
+    FastEmbedEmbeddings = None
+
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, VectorParams
@@ -15,7 +18,10 @@ load_dotenv()
 
 #----------------------------IMPORTING LIBRARIES----------------------------
 
-embeddings = FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5")
+if FastEmbedEmbeddings:
+    embeddings = FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5")
+else:
+    embeddings = None
 
 # Hybrid Qdrant Initialization: Use cloud if URL/API KEY exists, otherwise local
 QDRANT_URL = os.getenv("QDRANT_URL")
@@ -39,7 +45,8 @@ else:
         client = QdrantClient(path="trip_rag_name")
 
 def upload_memory_rag(text: str):
-    # client = QdrantClient(path="memory_rag")
+    if not embeddings:
+        return "Error: Embeddings not available on this machine."
     vector_store = QdrantVectorStore(
         client=client,
         collection_name="trip_rag_name",
@@ -47,6 +54,61 @@ def upload_memory_rag(text: str):
     )
     vector_store.add_texts(texts=[text])
     return "Memory RAG uploaded successfully"
+
+def upload_rag_from_data(json_data, filename="api_upload"):
+    """Processed a single JSON object and uploads it."""
+    if not embeddings:
+        return "Error: Embeddings not available on this machine."
+        
+    doc = process_json_item(json_data, filename)
+    
+    vector_store = QdrantVectorStore(
+        client=client,
+        collection_name="trip_rag_name",
+        embedding=embeddings,
+    )
+    vector_store.add_documents(documents=[doc])
+    return f"Data from {filename} uploaded successfully"
+
+def process_json_item(json_data, filename):
+    # Handle nested structure: check if data is under "json" key
+    if "json" in json_data and isinstance(json_data["json"], dict):
+        full_metadata = json_data.get("metadata", {})
+        json_data = json_data["json"]
+    else:
+        full_metadata = {}
+
+    content_parts = []
+    
+    fields = {
+        "Attraction_name": "Attraction",
+        "Why visit": "Why visit",
+        "What included": "What's included",
+        "What not included": "What's not included",
+        "Restrictions": "Restrictions",
+        "Location": "Location",
+        "User Rating": "User Rating",
+        "Duration": "Duration",
+        "additional Information": "additional Information"
+    }
+    
+    for key, label in fields.items():
+        if key in json_data:
+            val = json_data[key]
+            if isinstance(val, list):
+                val = ", ".join(str(v) for v in val)
+            content_parts.append(f"{label}: {str(val)}")
+
+    page_content = "\n".join(content_parts)
+    metadata = {"source": filename}
+    metadata["json"] = json.dumps(json_data)
+    
+    # Merge in full_metadata
+    for key, value in json_data.items():
+        if key not in fields:
+            metadata[key] = str(value) if not isinstance(value, (dict, list)) else json.dumps(value)
+    
+    return Document(page_content=page_content, metadata=metadata)
 
 
 
@@ -198,4 +260,5 @@ def upload_rag():
     else:
         return "No documents found in the dataset_json folder."
 
-print(upload_rag())
+if __name__ == "__main__":
+    print(upload_rag())
