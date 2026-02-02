@@ -235,10 +235,10 @@ class ErrorResponse(BaseModel):
 
 # --- API Endpoints ---
 
-@app.get("/", tags=["General"])
-async def root():
+@app.get("/api/v1/info", tags=["General"])
+async def api_info():
     """
-    Root endpoint - API information
+    API information
     """
     return {
         "message": "Trip Agent API",
