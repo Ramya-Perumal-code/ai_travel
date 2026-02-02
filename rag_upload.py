@@ -1,4 +1,4 @@
-from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
+from langchain_huggingface import HuggingFaceEndpointEmbeddings
 
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
@@ -11,12 +11,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-#----------------------------IMPORTING LIBRARIES----------------------------
-
-embeddings = HuggingFaceInferenceAPIEmbeddings(
-    api_key=os.getenv("HF_TOKEN"),
-    model_name="sentence-transformers/all-mpnet-base-v2"
-)
+hf_token = os.getenv("HF_TOKEN")
+if hf_token:
+    embeddings = HuggingFaceEndpointEmbeddings(
+        huggingfacehub_api_token=hf_token,
+        model_name="sentence-transformers/all-mpnet-base-v2"
+    )
+else:
+    embeddings = None
+    print("⚠️ [Warning] HF_TOKEN not found in environment.")
 
 # Hybrid Qdrant Initialization: Use cloud if URL/API KEY exists, otherwise local
 QDRANT_URL = os.getenv("QDRANT_URL")
