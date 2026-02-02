@@ -263,6 +263,7 @@ async def debug_paths():
         "frontend_exists": os.path.exists(frontend_path),
         "dist_exists": os.path.exists(dist_path),
         "files_in_base": os.listdir(base_dir) if os.path.exists(base_dir) else [],
+        "files_in_frontend": os.listdir(frontend_path) if os.path.exists(frontend_path) else [],
     }
     
     if os.path.exists(dist_path):
