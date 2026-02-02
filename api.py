@@ -127,6 +127,9 @@ from llm_agent import TravelResearchAgent, AdditionalInfoAgent, OrchestrateAgent
 from rag_upload import upload_memory_rag # Import for the upload endpoint
 import os
 import json
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(

@@ -47,7 +47,7 @@ except ImportError:
 
 #----------------------------IMPORTING LIBRARIES----------------------------
 
-hf_token = os.getenv("HF_TOKEN")
+hf_token = os.getenv("HF_TOKEN") or os.getenv("HF_KEY")
 if hf_token:
     embeddings = HuggingFaceEndpointEmbeddings(
         huggingfacehub_api_token=hf_token,

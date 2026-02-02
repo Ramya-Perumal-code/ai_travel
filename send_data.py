@@ -7,8 +7,9 @@ load_dotenv()
 
 # CONFIGURATION
 # Set this to your Koyeb App URL (e.g., https://your-app-name.koyeb.app)
-KOYEB_URL = "https://ai-travel-agent-ramyaperumalcode.koyeb.app" # <--- UPDATE THIS
-API_KEY = os.getenv("GROQ_API_KEY") # We use your Groq key as a simple password
+KOYEB_URL = "https://inevitable-catlin-self-learner-ai-337aa463.koyeb.app" # <--- UPDATE THIS
+API_KEY = os.getenv("GROQ_API_KEY") 
+print(f"🔑 Using API Key: {API_KEY[:5]}...{API_KEY[-5:]}")
 
 def migrate_data():
     dataset_folder = "dataset_json"
