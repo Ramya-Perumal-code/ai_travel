@@ -6,31 +6,34 @@ from langchain_core.documents import Document
 import json
 import os
 import shutil
+from dotenv import load_dotenv
+
+load_dotenv()
 
 #----------------------------IMPORTING LIBRARIES----------------------------
 
 embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
 
-# Initialize client with error handling for corrupted metadata
-# Check if folder exists and has corrupted metadata, delete it before initializing
-if os.path.exists("trip_rag_name"):
-    try:
-        # Try to initialize client - if it fails, the metadata is corrupted
-        test_client = QdrantClient(path="trip_rag_name")
-        test_client.get_collections()  # Try to access collections
-        client = test_client
-    except Exception as e:
-        # Metadata is corrupted, delete and recreate
-        print(f"Warning: Corrupted collection detected ({e}). Removing and recreating...")
-        try:
-            shutil.rmtree("trip_rag_name")
-            print("Removed corrupted collection folder.")
-        except Exception as cleanup_error:
-            print(f"Could not remove corrupted folder: {cleanup_error}")
-            raise
-        client = QdrantClient(path="trip_rag_name")
+# Hybrid Qdrant Initialization: Use cloud if URL/API KEY exists, otherwise local
+QDRANT_URL = os.getenv("QDRANT_URL")
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+
+if QDRANT_URL and QDRANT_API_KEY:
+    print("🌐 [Qdrant] Connecting to Qdrant Cloud for upload...")
+    client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
 else:
-    client = QdrantClient(path="trip_rag_name")
+    print("🏠 [Qdrant] Using local storage (trip_rag_name) for upload...")
+    if os.path.exists("trip_rag_name"):
+        try:
+            test_client = QdrantClient(path="trip_rag_name")
+            test_client.get_collections()
+            client = test_client
+        except Exception as e:
+            print(f"Warning: Corrupted collection detected ({e}). Removing...")
+            shutil.rmtree("trip_rag_name")
+            client = QdrantClient(path="trip_rag_name")
+    else:
+        client = QdrantClient(path="trip_rag_name")
 
 def upload_memory_rag(text: str):
     # client = QdrantClient(path="memory_rag")

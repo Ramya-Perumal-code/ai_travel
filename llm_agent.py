@@ -1,6 +1,17 @@
-import ollama
 import json
+import os
 from tool_calls import search_rag, duckduckgo_search
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+# Try to import Groq for cloud deployment
+try:
+    from groq import Groq
+    GROQ_AVAILABLE = True
+except ImportError:
+    GROQ_AVAILABLE = False
 
 def is_relevant(query: str, attraction_name: str) -> bool:
     """
@@ -147,7 +158,28 @@ def TravelResearchAgent(query: str, additional_info: str = None) -> str:
         "Please provide a comprehensive, unified answer that incorporates the additional details into the main narrative."
     )
 
+    # --- Hybrid LLM Logic ---
+    GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+    
+    if GROQ_API_KEY and GROQ_AVAILABLE:
+        try:
+            print("🌐 [LLM] Using Groq Cloud API...")
+            client = Groq(api_key=GROQ_API_KEY)
+            chat_completion = client.chat.completions.create(
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_content}
+                ],
+                model="llama-3.3-70b-versatile", # or "mixtral-8x7b-32768"
+            )
+            return chat_completion.choices[0].message.content
+        except Exception as e:
+            print(f"❌ Groq API failed: {e}. Falling back to Ollama...")
+            # Fall through to Ollama
+    
     try:
+        import ollama
+        print("🏠 [LLM] Using local Ollama...")
         response = ollama.chat(
             model="qwen3:0.6b",
             messages=[
@@ -157,7 +189,7 @@ def TravelResearchAgent(query: str, additional_info: str = None) -> str:
         )
         return response['message']['content']
     except Exception as e:
-        return f"Error generating response: {e}"
+        return f"Error generating response (Ollama fallback): {e}"
 
 def gather_additional_information(query: str, rag_results: list) -> str:
     """
@@ -277,6 +309,26 @@ def AdditionalInfoAgent(query: str) -> str:
         
         user_content = f"Attraction Query: {query}\n\nRaw Metadata gathered:\n{raw_info}"
         
+        # --- Hybrid LLM Logic (Metadata Specialist) ---
+        GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+        
+        if GROQ_API_KEY and GROQ_AVAILABLE:
+            try:
+                print("🌐 [AdditionalInfoAgent] Using Groq Cloud API...")
+                client = Groq(api_key=GROQ_API_KEY)
+                chat_completion = client.chat.completions.create(
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_content}
+                    ],
+                    model="llama-3.1-8b-instant", # Faster model for simpler tasks
+                )
+                return chat_completion.choices[0].message.content
+            except Exception as e:
+                print(f"❌ Groq API failed in AdditionalInfoAgent: {e}. Falling back...")
+
+        import ollama
+        print("🏠 [AdditionalInfoAgent] Using local Ollama...")
         response = ollama.chat(
             model="qwen3:0.6b",
             messages=[
@@ -310,5 +362,5 @@ def OrchestrateAgent(query: str) -> str:
 
 if __name__ == "__main__":
     # Simple test
-    q = "tell me about madame tussauds"
+    q = "tell me about taj mahal,india"
     print(OrchestrateAgent(q))

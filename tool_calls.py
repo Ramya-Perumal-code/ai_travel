@@ -7,6 +7,10 @@ from langchain_community.tools import DuckDuckGoSearchRun
 import json
 import os
 import atexit
+from dotenv import load_dotenv
+
+# Load environment variables from .env file if it exists
+load_dotenv()
 
 # Ensure ddgs is available for DuckDuckGoSearchRun
 try:
@@ -45,7 +49,16 @@ except ImportError:
 
 embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
 
-client = QdrantClient(path="trip_rag_name")
+# Hybrid Qdrant Initialization: Use cloud if URL/API KEY exists, otherwise local
+QDRANT_URL = os.getenv("QDRANT_URL")
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+
+if QDRANT_URL and QDRANT_API_KEY:
+    print("🌐 [Qdrant] Connecting to Qdrant Cloud...")
+    client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
+else:
+    print("🏠 [Qdrant] Using local storage (trip_rag_name)...")
+    client = QdrantClient(path="trip_rag_name")
 
 
 def search_rag(query: str = "San Diego Zoo Day Pass?", k: int = 1) -> list:
