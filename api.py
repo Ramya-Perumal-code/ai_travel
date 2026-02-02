@@ -115,8 +115,10 @@ This module provides REST API endpoints to interact with the LLM agents
 for trip planning, travel information, and attraction details.
 """
 
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from typing import Optional
 import logging
@@ -507,6 +509,31 @@ async def upload_json(data: dict, api_key: str):
         return {"success": True, "message": msg}
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+# --- Serve Frontend Static Files ---
+
+# Mount the static files directory (built frontend)
+frontend_dist_path = os.path.join(os.path.dirname(__file__), "frontend", "dist")
+
+if os.path.exists(frontend_dist_path):
+    app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dist_path, "assets")), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_frontend(request: Request, full_path: str):
+        # If it's an API route, let FastAPI handle it normally (this route is at the bottom, so it should work)
+        if full_path.startswith("api/") or full_path.startswith("docs") or full_path.startswith("openapi.json") or full_path == "health":
+            # This shouldn't really be hit for API routes if they are defined above
+            raise HTTPException(status_code=404)
+        
+        # Check if the file exists in dist
+        file_path = os.path.join(frontend_dist_path, full_path)
+        if os.path.isfile(file_path):
+            return FileResponse(file_path)
+            
+        # Otherwise serve index.html (for SPA routing)
+        return FileResponse(os.path.join(frontend_dist_path, "index.html"))
+else:
+    logger.warning(f"Frontend dist folder not found at {frontend_dist_path}. UI will not be served.")
 
 
 # --- Application Startup/Shutdown ---
