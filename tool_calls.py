@@ -1,4 +1,4 @@
-from langchain_huggingface import HuggingFaceInferenceAPIEmbeddings
+from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
 
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
