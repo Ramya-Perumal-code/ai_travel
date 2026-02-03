@@ -1,149 +1,107 @@
-# 🌍 AI Trip Agent
+# 🌍 AI Trip Agent (Hybrid Cloud/Local)
 
-An advanced, intelligent travel assistant that combines **local knowledge (RAG)** and **Web Search** to provide comprehensive travel plans and answers.
+An advanced, intelligent travel assistant that combines **Vector Knowledge (RAG)** and **Web Search** to provide comprehensive travel plans. This project is optimized for both **Local Inference** and **Cloud Deployment (Koyeb)**.
 
 ## 🚀 Key Features
 *   **Hybrid Intelligence**:
-    *   **RAG (Retrieval-Augmented Generation)**: Searches your local curated dataset first for high-quality, trusted info.
-    *   **Web Fallback**: Uses **DuckDuckGo** to fill in gaps if local data is missing.
-*   **Modern Interactive UI**: professional React/Vite frontend with a chat interface.
-*   **Dual-Agent Orchestration**:
-    *   `OrchestrateAgent`: High-level coordinator that manages the sequential flow of specialized agents.
-    *   `AdditionalInfoAgent`: Specialized agent for extracting specific details from RAG first.
-    *   `TravelResearchAgent`: Synthesizes a full answer using the gathered metadata and additional research.
-*   **API-First Design**: Built on **FastAPI**, exposing clean REST endpoints (`/health`, `/api/v1/final-response`, `/api/v1/additional-info`).
+    *   **Cloud Mode**: Uses **Groq (Llama 3)** for speed and **Hugging Face** for cloud-based embeddings (0 RAM usage).
+    *   **Local Mode**: Runs entirely offline with **Ollama** and local vector storage.
+*   **RAG (Retrieval-Augmented Generation)**: Uses **Qdrant** (Cloud or Local) to search curated datasets first for high-quality, trusted info.
+*   **Modern Interactive UI**: Professional React chat interface, now served directly from the FastAPI backend.
+*   **Multi-Agent System**:
+    *   `OrchestrateAgent`: High-level coordinator that manages agent flow.
+    *   `AdditionalInfoAgent`: Specialized in deep-dive metadata extraction.
+    *   `TravelResearchAgent`: Synthesizes data into a cohesive travel response.
 
 ## 🏗️ High Level Architecture
 
 ```mermaid
 graph TD
-    User([User]) <-->|Chat Interface| Frontend[React Frontend]
-    Frontend <-->|JSON/HTTP| Backend[FastAPI Backend]
+    User([User]) <-->|Chat Interface| Backend[FastAPI Backend]
     
-    subgraph "Travel Agent Engine"
+    subgraph "FastAPI Server (Koyeb/Local)"
+        Backend --> Static[Serve React UI]
         Backend --> Orchestrator[OrchestrateAgent]
         
-        Orchestrator -- "1. Gather Metadata" --> AgentB["AdditionalInfoAgent (LLM)"]
-        AgentB --> RAG[(RAG Store)]
-        AgentB --> Web[Web Search]
-        
-        AgentB -. "2. Metadata" .-> Orchestrator
-        
-        Orchestrator -- "3. Synthesize Answer" --> AgentA["TravelResearchAgent (LLM)"]
-        AgentA --> RAG
-        AgentA --> Web
-        
-        AgentA -. "4. Final Result" .-> Orchestrator
-        
-        AgentA --- LLM((Ollama LLM))
-        AgentB --- LLM
+        Orchestrator --> AgentB[AdditionalInfoAgent]
+        Orchestrator --> AgentA[TravelResearchAgent]
+    end
+
+    subgraph "Knowledge & Tools"
+        AgentA & AgentB --> Qdrant[(Qdrant Cloud/Local)]
+        AgentA & AgentB --> Web[DuckDuckGo Search]
+        AgentA & AgentB --> Embed[HF Cloud Embeddings]
+    end
+
+    subgraph "Reasoning Engines (LLMs)"
+        AgentA & AgentB --- Groq((Groq Cloud Llama3))
+        AgentA & AgentB --- Ollama((Ollama Local))
     end
 ```
 
 ## 🧠 AI & Agentic Concepts
-This project demonstrates advanced **Agentic AI** patterns:
 
-1.  **Retrieval-Augmented Generation (RAG)**:
-    *   Instead of relying solely on the LLM's training data, we inject specific, trusted knowledge from our `dataset_json` folder.
-    *   **Vector Search**: We use **Qdrant** to semantically search for relevant chunks of text based on the user's query.
-
-2.  **Tool Use (Function Calling)**:
-    *   The Agent isn't just a chatbot; it has "hands". It can efficiently determine *when* to use a tool.
-    *   **Dynamic Fallback**: It intelligently tries local RAG data first, and only falls back to Web Search if the local data is insufficient.
-
-3.  **Context Injection & Synthesis**:
-    *   Data from 2 distinct sources (Vector DB and Web Search) is normalized and fed into the LLM's context window.
-    *   The LLM acts as a **Reasoning Engine**, synthesizing conflicting or disparate data points into a cohesive, human-readable itinerary.
-
-4.  **Local Inference**:
-    *   Runs entirely on local hardware using **Ollama**, ensuring data privacy and zero inference costs.
-
-5.  **Technical Guardrails (Strict Relevance)**:
-    *   **Keyword Filtering**: Prevents "Data Mixing" where RAG might return high-scoring but semantically unrelated documents.
-    *   **Fallback Logic**: Automatically shifts to Web Search ONLY when the local Knowledge Base fails relevance checks.
-
-## 🤖 Agent Specifications (Multi-Agent System)
-
-The system employs a collaborative multi-agent architecture:
-
-### 1. `OrchestrateAgent` (The Coordinator)
-*   **Role**: Primary entry point for all research requests.
-*   **Primary Objective**: To trigger specialized agents in sequence and merge their intelligence.
-*   **Strategy**: Executes `AdditionalInfoAgent` first to extract deep-dive metadata, then passes this context to `TravelResearchAgent` to ensure the final narrative is enriched with specific details.
-
-### 2. `TravelResearchAgent` (The Synthesis Engine)
-*   **Role**: Expert Travel Researcher & Synthesis Specialist.
-*   **Primary Objective**: To consolidate information from multiple sources into a comprehensive, human-readable response.
-*   **Strategy**: 
-    - **Pre-Processing**: Filters RAG results using a **0.5 similarity threshold** and a **Strict Relevance Guard** to ensure accuracy.
-    - **Context Assembly**: Integrates pre-gathered metadata from `AdditionalInfoAgent` with its own RAG search and Web fallback (if RAG is insufficient) to synthesize a complete answer.
-    - **Formatting**: Strictly enforces Markdown structure for the UI.
-
-### 2. `AdditionalInfoAgent` (The Data Specialist)
-*   **Role**: Targeted Metadata Extractor.
-*   **Primary Objective**: To find specific "hidden" details like ticketing rules, duration, and restrictions.
-*   **Strategy**:
-    - **Depth Over Breadth**: Focuses on structured metadata fields (`additional Information`) within RAG documents using a **Strict Relevance Guard**.
-    - **LLM Synthesis**: Uses the LLM (Ollama) to rewrite fragmented metadata into a professional, concise summary for the traveler.
-
-## 📅 Development Timeline
-
-1.  **Phase 1: Foundation**
-    *   Setup FastAPI architecture and basic Chat UI.
-    *   Implemented core RAG system with Vector Store integration.
-2.  **Phase 2: External APIs**
-    *   Integrated **GetYourGuide** for initial activity data.
-3.  **Phase 3: Intelligence Refinement**
-    *   Introduced **Multi-Agent logic** (`AdditionalInfoAgent`) for deep metadata extraction.
-    *   Implemented agentic fallback strategies (RAG -> Web).
-4.  **Phase 4: API & Experience Polish** (Current)
-    *   Enhanced UI with framer-motion animations.
-    *   Added browser-friendly `GET` endpoints for debugging and accessibility.
-    *   Comprehensive design and architectural documentation.
+1.  **Hybrid RAG Store**:
+    *   The app automatically detects if `QDRANT_URL` is present. If so, it connects to **Qdrant Cloud**; otherwise, it uses a local folder on your disk.
+2.  **Memory-Optimized Embeddings**:
+    *   Uses **Hugging Face Inference API** for embeddings. This allows the app to run on the **Koyeb Nano Tier (256MB RAM)** by offloading the heavy math to the cloud.
+3.  **Strict Relevance Guard**:
+    *   Agents check search results for keyword matches and similarity scores. If the local data isn't good enough, they automatically pivot to **Web Search**.
 
 ## 🛠️ Tech Stack
-*   **Backend**: Python, FastAPI, Uvicorn
-*   **Frontend**: React, TypeScript, Vite, TailwindCSS
-*   **AI/LLM**: Ollama (running local models like `qwen3:0.6b`)
-*   **Data**: Qdrant (Vector Store/RAG), DuckDuckGo (Web), Firecrawl (Scraping)
+*   **Backend**: Python, FastAPI, Uvicorn (serving both API and Static files).
+*   **Frontend**: React, TypeScript, Vite, TailwindCSS (Pre-built in `frontend/dist`).
+*   **Vector DB**: Qdrant (Cloud or Local).
+*   **LLMs**: Groq (Cloud), Ollama (Local).
 
 ## 🛠️ Environment Setup
-To run the full suite (including data automation), create a `.env` file in the root:
+Create a `.env` file in the root directory:
 ```env
-FIRECRAWL_API_KEY=your_key_here
-# Ollama must be running locally
+# --- CLOUD CONFIG (Required for Koyeb) ---
+QDRANT_URL=https://your-cluster-url.cloud.qdrant.io
+QDRANT_API_KEY=your-api-key
+GROQ_API_KEY=your-groq-key
+HF_TOKEN=your-huggingface-token  # For Cloud Embeddings
+
+# --- LOCAL CONFIG (Optional) ---
+# If these are missing, it defaults to local Ollama and local storage
 ```
 
-## 🏃‍♂️ How to Run
+## 🏃‍♂️ How to Run Locally
 
-### 1. Backend (API)
-The brain of the operation.
+### 1. Prerequisites
+*   **Python**: Use a Virtual Environment (`python -m venv venv`).
+*   **Ollama**: Install and run `ollama pull llama3`.
+
+### 2. Setup & Start
 ```powershell
-# In the root 'trip_agent' folder
+# 1. Activate venv
+.\venv\Scripts\activate
+
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Start the app
 python api.py
 ```
-*   Runs on: `http://localhost:8000`
-*   Swagger UI: `http://localhost:8000/docs`
+*   **Access the App**: [http://localhost:8000](http://localhost:8000)
 
-### 2. Frontend (UI)
-The user interface.
+## ☁️ Cloud Deployment (Koyeb)
+
+1.  **Push to GitHub**: Ensure the `frontend/dist` folder is included in your push.
+2.  **Deploy on Koyeb**: Connect your repository to a new Koyeb Service.
+3.  **Add Environment Variables**: Add `QDRANT_URL`, `QDRANT_API_KEY`, `GROQ_API_KEY`, and `HF_TOKEN` in the Koyeb dashboard.
+4.  **Health Check**: Wait for the "Healthy" status.
+
+### 🚀 Data Migration to Cloud
+If your Cloud Qdrant is empty, run the migrator script:
 ```powershell
-# Open a new terminal
-cd frontend
-npm run dev
+python send_data.py
 ```
-*   Runs on: `http://localhost:3000` (auto-proxies request to backend)
+*(This sends your local JSON dataset to your live Koyeb API, which re-indexes them into the Cloud Vector DB).*
 
-### 3. Data Preparation (Optional)
-If you want to add new attractions to the Knowledge Base:
-1.  **Scrape**: `python dataset_json/automate.py <URL>` (Requires Firecrawl Key).
-2.  **Upload**: `python rag_upload.py` to re-index the Qdrant database.
-
-## 🧪 Testing
-You can test the agent in three ways:
-1.  **Chat Interface**: Just type in the frontend chat box!
-2.  **Browser URL (Direct API)**: 
-    - **Main Response**: `http://localhost:8000/api/v1/final-response?query=Venice`
-    - **Additional Info**: `http://localhost:8000/api/v1/additional-info?query=Venice`
-    - **Test Browser**: `http://localhost:8000/api/v1/test-browser?query=Venice`
-3.  **Swagger UI**: Visit `http://localhost:8000/docs`.
+## 🧪 API Endpoints
+*   **Chat UI**: Root `/`
+*   **API Docs**: `/docs`
+*   **Direct Query**: `/api/v1/final-response?query=London`
+*   **Health**: `/health`

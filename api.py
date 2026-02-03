@@ -250,27 +250,6 @@ async def api_info():
         }
     }
 
-@app.get("/api/v1/debug-paths", tags=["General"])
-async def debug_paths():
-    """Debug endpoint to check directory structure on server."""
-    base_dir = os.path.dirname(__file__)
-    frontend_path = os.path.join(base_dir, "frontend")
-    dist_path = os.path.join(frontend_path, "dist")
-    
-    debug_info = {
-        "base_dir": base_dir,
-        "cwd": os.getcwd(),
-        "frontend_exists": os.path.exists(frontend_path),
-        "dist_exists": os.path.exists(dist_path),
-        "files_in_base": os.listdir(base_dir) if os.path.exists(base_dir) else [],
-        "files_in_frontend": os.listdir(frontend_path) if os.path.exists(frontend_path) else [],
-    }
-    
-    if os.path.exists(dist_path):
-        debug_info["files_in_dist"] = os.listdir(dist_path)
-        
-    return debug_info
-
 
 @app.get("/health", response_model=HealthResponse, tags=["General"])
 async def health_check():
